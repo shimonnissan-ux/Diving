@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="צלילה קיסריה">
+<meta name="theme-color" content="#006064">
+<link rel="manifest" href="manifest.json">
+<title>🤿 תנאי צלילה — קיסריה</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Heebo', sans-serif;
+  direction: rtl;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #001a33 0%, #003366 30%, #006064 70%, #00838f 100%);
+  color: #e0f7fa;
+  padding-bottom: 30px;
+}
+
+/* Animated waves background */
+body::before {
+  content: '';
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 200px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120'%3E%3Cpath fill='rgba(0,150,180,0.15)' d='M0,64 C360,120 1080,0 1440,64 L1440,120 L0,120 Z'/%3E%3C/svg%3E") repeat-x bottom;
+  animation: wave 8s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes wave { from{background-position:0 bottom} to{background-position:1440px bottom} }
+
+/* HEADER */
+#hdr {
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px);
+  padding: 16px 20px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,200,220,0.2);
+  position: sticky; top:0; z-index:99;
+}
+#hdr h1 { font-size: 22px; font-weight: 900; color: #80deea; letter-spacing: 1px; }
+#hdr p  { font-size: 13px; color: rgba(200,240,255,0.6); margin-top: 2px; }
+#refresh-btn {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  background: rgba(0,200,220,0.15); border: 1px solid rgba(0,200,220,0.3);
+  color: #80deea; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+  font-family: 'Heebo'; font-size: 13px; font-weight: 600;
+  transition: all 0.2s;
+}
+#refresh-btn:hover { background: rgba(0,200,220,0.3); }
+
+/* MAIN */
+#main { max-width: 600px; margin: 0 auto; padding: 20px 14px; position: relative; z-index: 1; }
+
+/* LOADING */
+#loading {
+  text-align: center; padding: 60px 20px;
+}
+#loading .bubble {
+  font-size: 60px; animation: bob 1.5s ease-in-out infinite;
+  display: block; margin-bottom: 16px;
+}
+@keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+#loading p { font-size: 16px; color: #80deea; font-weight: 600; }
+
+/* ERROR */
+#error-msg {
+  display:none; background: rgba(244,67,54,0.15); border: 1px solid rgba(244,67,54,0.4);
+  border-radius: 14px; padding: 20px; text-align: center; color: #ef9a9a;
+}
+
+/* LAST UPDATED */
+#last-updated {
+  text-align: center; font-size: 12px; color: rgba(200,240,255,0.4);
+  margin-bottom: 16px;
+}
+
+/* DAY CARDS */
+.day-card {
+  background: rgba(0,30,60,0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0,200,220,0.2);
+  border-radius: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.day-card:hover { transform: translateY(-2px); }
+
+.day-header {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0,200,220,0.15);
+}
+.day-name { font-size: 18px; font-weight: 900; color: #e0f7fa; }
+.day-date { font-size: 13px; color: rgba(200,240,255,0.5); margin-top: 2px; }
+
+/* SCORE */
+.score-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-weight: 900; flex-shrink: 0;
+  border: 3px solid;
+  transition: all 0.5s;
+}
+.score-num { font-size: 24px; line-height: 1; }
+.score-lbl { font-size: 9px; letter-spacing: 0.5px; opacity: 0.8; }
+
+.score-10 { background: rgba(76,175,80,0.2); border-color: #4caf50; color: #81c784; }
+.score-9  { background: rgba(76,175,80,0.2); border-color: #4caf50; color: #81c784; }
+.score-8  { background: rgba(139,195,74,0.2); border-color: #8bc34a; color: #aed581; }
+.score-7  { background: rgba(139,195,74,0.2); border-color: #8bc34a; color: #aed581; }
+.score-6  { background: rgba(255,193,7,0.2); border-color: #ffc107; color: #ffd54f; }
+.score-5  { background: rgba(255,152,0,0.2); border-color: #ff9800; color: #ffb74d; }
+.score-4  { background: rgba(255,87,34,0.2); border-color: #ff5722; color: #ff8a65; }
+.score-3  { background: rgba(244,67,54,0.2); border-color: #f44336; color: #ef9a9a; }
+.score-2  { background: rgba(244,67,54,0.2); border-color: #f44336; color: #ef9a9a; }
+.score-1  { background: rgba(156,39,176,0.2); border-color: #9c27b0; color: #ce93d8; }
+
+/* STATUS BADGE */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.s-excellent { background: rgba(76,175,80,0.2); color: #81c784; border: 1px solid #4caf50; }
+.s-good      { background: rgba(139,195,74,0.2); color: #aed581; border: 1px solid #8bc34a; }
+.s-ok        { background: rgba(255,193,7,0.2); color: #ffd54f; border: 1px solid #ffc107; }
+.s-poor      { background: rgba(255,87,34,0.2); color: #ff8a65; border: 1px solid #ff5722; }
+.s-bad       { background: rgba(244,67,54,0.2); color: #ef9a9a; border: 1px solid #f44336; }
+
+/* PARAMS GRID */
+.params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 14px 18px;
+}
+.param {
+  background: rgba(0,100,120,0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0,200,220,0.1);
+}
+.param-icon { font-size: 20px; margin-bottom: 4px; }
+.param-label { font-size: 11px; color: rgba(200,240,255,0.5); font-weight: 600; margin-bottom: 2px; }
+.param-value { font-size: 20px; font-weight: 900; line-height: 1; }
+.param-unit  { font-size: 11px; color: rgba(200,240,255,0.5); margin-top: 1px; }
+.param-bar {
+  height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  margin-top: 6px; overflow: hidden;
+}
+.param-bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+/* BEST TIME */
+.best-time {
+  padding: 10px 18px 14px;
+  font-size: 13px;
+  color: rgba(200,240,255,0.6);
+  border-top: 1px solid rgba(0,200,220,0.1);
+}
+.best-time strong { color: #80deea; }
+
+/* HOURLY */
+.hourly-section {
+  padding: 0 18px 14px;
+}
+.hourly-title { font-size: 12px; color: rgba(200,240,255,0.4); margin-bottom: 8px; font-weight: 600; }
+.hourly-row {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+}
+.hourly-row::-webkit-scrollbar { display: none; }
+.hour-cell {
+  background: rgba(0,100,120,0.2);
+  border: 1px solid rgba(0,200,220,0.1);
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.hour-time  { font-size: 11px; color: rgba(200,240,255,0.5); margin-bottom: 4px; }
+.hour-score { font-size: 16px; font-weight: 900; }
+.hour-wave  { font-size: 10px; color: rgba(200,240,255,0.4); margin-top: 2px; }
+
+/* LEGEND */
+#legend {
+  background: rgba(0,30,60,0.5);
+  border: 1px solid rgba(0,200,220,0.15);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-top: 8px;
+}
+#legend h3 { font-size: 13px; color: #80deea; margin-bottom: 10px; font-weight: 700; }
+.legend-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 12px; color: rgba(200,240,255,0.7); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <h1>🤿 תנאי צלילה — קיסריה</h1>
+  <p id="hdr-sub">טוען נתונים...</p>
+  <button id="refresh-btn" onclick="fetchData()">🔄 רענן</button>
+</div>
+
+<div id="main">
+  <div id="loading">
+    <span class="bubble">🤿</span>
+    <p>שואב נתוני ים...</p>
+  </div>
+  <div id="error-msg">
+    <div style="font-size:40px;margin-bottom:12px">🌊</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">לא ניתן לטעון נתונים</div>
+    <div style="font-size:13px;opacity:0.7">בדוק חיבור לאינטרנט ונסה שוב</div>
+    <button onclick="fetchData()" style="margin-top:14px;background:rgba(0,200,220,0.2);border:1px solid rgba(0,200,220,0.4);color:#80deea;padding:8px 20px;border-radius:20px;font-family:'Heebo';font-size:14px;font-weight:700;cursor:pointer">נסה שוב</button>
+  </div>
+  <div id="last-updated"></div>
+  <div id="cards"></div>
+  <div id="legend" style="display:none">
+    <h3>📊 מדד הצלילה 1–10</h3>
+    <div class="legend-row"><div class="legend-dot" style="background:#4caf50"></div>9–10 — מושלם! ראות מעולה, ים שקט</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#8bc34a"></div>7–8 — טוב מאוד, מומלץ לצאת</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#ffc107"></div>5–6 — בינוני, ניתן לצלול</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#ff5722"></div>3–4 — לא אידיאלי, שיקול דעת</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#f44336"></div>1–2 — לא מומלץ לצלול</div>
+    <div style="margin-top:10px;font-size:11px;color:rgba(200,240,255,0.4)">
+      * ראות מחושבת לפי סוג גלים, גובה, וסוול. נתונים מ-Open-Meteo Marine.
+    </div>
+  </div>
+</div>
+
+<script>
+// קיסריה
+const LAT = 32.50;
+const LON = 34.90;
+
+const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const MONTHS_HE = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${DAYS_HE[d.getDay()]}, ${d.getDate()} ב${MONTHS_HE[d.getMonth()]}`;
+}
+
+// ── SCORE CALCULATION ──────────────────────────────────────────
+// Main factor: visibility (estimated from wave height + swell)
+// Secondary: wave height, swell, current
+function calcScore(waveH, swellH, currentV, windWaveH) {
+  // Estimated underwater visibility based on conditions
+  // In Med Sea near Caesarea:
+  // Calm (waves<0.3, swell<0.3) → visibility ~15-20m (excellent)
+  // Moderate (waves 0.3-0.7, swell 0.3-0.5) → visibility ~8-12m (good)
+  // Rough (waves 0.7-1.2) → visibility ~3-6m (poor)
+  // Very rough (waves>1.2) → visibility <2m (bad)
+
+  let score = 10;
+
+  // Wave height penalty (most important for visibility)
+  if (waveH < 0.2)       score -= 0;
+  else if (waveH < 0.4)  score -= 1;
+  else if (waveH < 0.6)  score -= 2;
+  else if (waveH < 0.8)  score -= 3;
+  else if (waveH < 1.0)  score -= 4;
+  else if (waveH < 1.5)  score -= 5;
+  else                   score -= 7;
+
+  // Swell penalty
+  if (swellH < 0.2)      score -= 0;
+  else if (swellH < 0.4) score -= 0.5;
+  else if (swellH < 0.7) score -= 1.5;
+  else if (swellH < 1.0) score -= 2.5;
+  else                   score -= 4;
+
+  // Current penalty
+  if (currentV < 0.2)    score -= 0;
+  else if (currentV < 0.4) score -= 0.5;
+  else if (currentV < 0.6) score -= 1;
+  else                   score -= 2;
+
+  // Wind wave penalty (choppy surface)
+  if (windWaveH > 0.5)   score -= 1;
+  if (windWaveH > 1.0)   score -= 1;
+
+  return Math.max(1, Math.min(10, Math.round(score)));
+}
+
+function scoreClass(s) {
+  if(s>=9) return 'score-10';
+  if(s>=8) return 'score-9';
+  if(s>=7) return 'score-7';
+  if(s>=6) return 'score-6';
+  if(s>=5) return 'score-5';
+  if(s>=4) return 'score-4';
+  if(s>=3) return 'score-3';
+  return 'score-1';
+}
+
+function statusInfo(s) {
+  if(s>=9) return {cls:'s-excellent', txt:'🤩 מושלם לצלילה!'};
+  if(s>=7) return {cls:'s-good',      txt:'✅ מומלץ לצלול'};
+  if(s>=5) return {cls:'s-ok',        txt:'⚠️ ניתן לצלול'};
+  if(s>=3) return {cls:'s-poor',      txt:'❌ לא אידיאלי'};
+  return          {cls:'s-bad',       txt:'🚫 לא מומלץ'};
+}
+
+function visEstimate(waveH, swellH) {
+  const total = waveH + swellH * 0.5;
+  if(total < 0.3)  return '15–20 מ\'';
+  if(total < 0.5)  return '10–15 מ\'';
+  if(total < 0.8)  return '6–10 מ\'';
+  if(total < 1.2)  return '3–6 מ\'';
+  return '1–3 מ\'';
+}
+
+function barColor(score) {
+  if(score>=7) return '#4caf50';
+  if(score>=5) return '#ffc107';
+  if(score>=3) return '#ff5722';
+  return '#f44336';
+}
+
+function scoreColor(s) {
+  if(s>=7) return '#81c784';
+  if(s>=5) return '#ffd54f';
+  if(s>=3) return '#ff8a65';
+  return '#ef9a9a';
+}
+
+// ── FETCH ──────────────────────────────────────────────────────
+async function fetchData() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('cards').innerHTML = '';
+  document.getElementById('legend').style.display = 'none';
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('hdr-sub').textContent = 'טוען נתונים...';
+
+  try {
+    // Marine API - waves, swell, current
+    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,swell_wave_height,ocean_current_velocity,wind_wave_height&timezone=Asia%2FJerusalem&forecast_days=7`;
+
+    const res = await fetch(marineUrl);
+    if(!res.ok) throw new Error('Marine API error');
+    const marine = await res.json();
+
+    document.getElementById('loading').style.display = 'none';
+    renderCards(marine);
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent =
+      `עודכן: ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    document.getElementById('hdr-sub').textContent = `קיסריה | ${now.getDate()} ב${MONTHS_HE[now.getMonth()]}`;
+    document.getElementById('legend').style.display = 'block';
+
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-msg').style.display = 'block';
+    console.error(e);
+  }
+}
+
+// ── RENDER ─────────────────────────────────────────────────────
+function renderCards(marine) {
+  const times = marine.hourly.time;
+  const waves = marine.hourly.wave_height;
+  const swells = marine.hourly.swell_wave_height;
+  const currents = marine.hourly.ocean_current_velocity;
+  const windWaves = marine.hourly.wind_wave_height;
+
+  // Group by day
+  const dayMap = {};
+  times.forEach((t,i) => {
+    const day = t.slice(0,10);
+    if(!dayMap[day]) dayMap[day] = [];
+    dayMap[day].push({
+      hour: +t.slice(11,13),
+      wave: waves[i]||0,
+      swell: swells[i]||0,
+      current: currents[i]||0,
+      windWave: windWaves[i]||0,
+    });
+  });
+
+  const today = new Date().toISOString().slice(0,10);
+  const days = Object.keys(dayMap).sort().slice(0,7);
+
+  const cards = document.getElementById('cards');
+  cards.innerHTML = '';
+
+  // Show next 3 days from today
+  let shown = 0;
+  days.forEach(day => {
+    if(day < today) return;
+    if(shown >= 3) return;
+    shown++;
+
+    const dayData = dayMap[day];
+
+    // Diving hours: 6:00–17:00
+    const diveHours = dayData.filter(h => h.hour >= 6 && h.hour <= 17);
+    if(!diveHours.length) return;
+
+    // Best conditions during dive window
+    const avgWave    = diveHours.reduce((s,h)=>s+h.wave,0)/diveHours.length;
+    const avgSwell   = diveHours.reduce((s,h)=>s+h.swell,0)/diveHours.length;
+    const avgCurrent = diveHours.reduce((s,h)=>s+h.current,0)/diveHours.length;
+    const avgWind    = diveHours.reduce((s,h)=>s+h.windWave,0)/diveHours.length;
+    const minWave    = Math.min(...diveHours.map(h=>h.wave));
+    const maxSwell   = Math.max(...diveHours.map(h=>h.swell));
+
+    const score = calcScore(avgWave, avgSwell, avgCurrent, avgWind);
+    const st = statusInfo(score);
+    const vis = visEstimate(avgWave, avgSwell);
+
+    // Best hour to dive
+    const bestHour = diveHours.reduce((best, h) => {
+      const s = calcScore(h.wave, h.swell, h.current, h.windWave);
+      const bs = calcScore(best.wave, best.swell, best.current, best.windWave);
+      return s > bs ? h : best;
+    }, diveHours[0]);
+    const bestScore = calcScore(bestHour.wave, bestHour.swell, bestHour.current, bestHour.windWave);
+
+    // Is this Saturday?
+    const d = new Date(day);
+    const isSat = d.getDay() === 6;
+
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    if(isSat) card.style.border = '1px solid rgba(0,200,220,0.5)';
+
+    card.innerHTML = `
+      <div class="day-header">
+        <div>
+          <div class="day-name">
+            ${isSat ? '⭐ ' : ''}${fmtDate(day)}
+          </div>
+          <div class="day-date">${isSat ? 'שבת — יום הצלילה שלך' : ''}</div>
+          <div class="status-badge ${st.cls}">${st.txt}</div>
+        </div>
+        <div class="score-circle ${scoreClass(score)}">
+          <div class="score-num">${score}</div>
+          <div class="score-lbl">/10</div>
+        </div>
+      </div>
+
+      <div class="params">
+        <div class="param">
+          <div class="param-icon">🌊</div>
+          <div class="param-label">גובה גלים (ממוצע)</div>
+          <div class="param-value" style="color:${avgWave<0.5?'#81c784':avgWave<1?'#ffd54f':'#ef9a9a'}">${avgWave.toFixed(2)}</div>
+          <div class="param-unit">מטר</div>
+          <div class="param-bar"><div class="param-bar-fill" style="width:${Math.min(100,avgWave/2*100)}%;background:${avgWave<0.5?'#4caf50':avgWave<1?'#ffc107':'#f44336'}"></div></div>
+        </div>
+        <div class="param">
+          <div class="param-icon">🌀</div>
+          <div class="param-label">סוול (גלי רוח עמוקים)</div>
+          <div class="param-value" style="color:${avgSwell<0.4?'#81c784':avgSwell<0.8?'#ffd54f':'#ef9a9a'}">${avgSwell.toFixed(2)}</div>
+          <div class="param-unit">מטר</div>
+          <div class="param-bar"><div class="param-bar-fill" style="width:${Math.min(100,avgSwell/1.5*100)}%;background:${avgSwell<0.4?'#4caf50':avgSwell<0.8?'#ffc107':'#f44336'}"></div></div>
+        </div>
+        <div class="param">
+          <div class="param-icon">👁️</div>
+          <div class="param-label">ראות מוערכת</div>
+          <div class="param-value" style="font-size:15px;color:${score>=7?'#81c784':score>=5?'#ffd54f':'#ef9a9a'}">${vis}</div>
+          <div class="param-unit">מתחת למים</div>
+          <div class="param-bar"><div class="param-bar-fill" style="width:${score*10}%;background:${barColor(score)}"></div></div>
+        </div>
+        <div class="param">
+          <div class="param-icon">🌊</div>
+          <div class="param-label">זרם ים</div>
+          <div class="param-value" style="color:${avgCurrent<0.3?'#81c784':avgCurrent<0.5?'#ffd54f':'#ef9a9a'}">${avgCurrent.toFixed(2)}</div>
+          <div class="param-unit">מ׳/שניה</div>
+          <div class="param-bar"><div class="param-bar-fill" style="width:${Math.min(100,avgCurrent/1*100)}%;background:${avgCurrent<0.3?'#4caf50':avgCurrent<0.5?'#ffc107':'#f44336'}"></div></div>
+        </div>
+      </div>
+
+      <div class="best-time">
+        🕐 שעת הצלילה המומלצת: <strong>${String(bestHour.hour).padStart(2,'0')}:00</strong>
+        — ציון <strong style="color:${scoreColor(bestScore)}">${bestScore}/10</strong>
+        | גלים מינימום: <strong>${minWave.toFixed(2)} מ'</strong>
+      </div>
+
+      <div class="hourly-section">
+        <div class="hourly-title">📈 תחזית לפי שעות (06:00–17:00)</div>
+        <div class="hourly-row">
+          ${diveHours.map(h => {
+            const hs = calcScore(h.wave, h.swell, h.current, h.windWave);
+            return `<div class="hour-cell">
+              <div class="hour-time">${String(h.hour).padStart(2,'0')}:00</div>
+              <div class="hour-score" style="color:${scoreColor(hs)}">${hs}</div>
+              <div class="hour-wave">${h.wave.toFixed(1)}מ'</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    cards.appendChild(card);
+  });
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+fetchData();
+</script>
+</body>
+</html>
