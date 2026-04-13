@@ -231,6 +231,11 @@ body::before {
     <button onclick="fetchData()" style="margin-top:14px;background:rgba(0,200,220,0.2);border:1px solid rgba(0,200,220,0.4);color:#80deea;padding:8px 20px;border-radius:20px;font-family:'Heebo';font-size:14px;font-weight:700;cursor:pointer">נסה שוב</button>
   </div>
   <div id="last-updated"></div>
+  <!-- WEEKLY SUMMARY STRIP -->
+  <div id="week-strip" style="display:none;margin-bottom:16px">
+    <div style="font-size:12px;color:rgba(200,240,255,0.4);margin-bottom:8px;text-align:center;font-weight:600">📅 סקירה שבועית — לחץ על יום לפרטים</div>
+    <div id="week-row" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px"></div>
+  </div>
   <div id="cards"></div>
   <div id="legend" style="display:none">
     <h3>📊 מדד הצלילה 1–10</h3>
@@ -343,6 +348,38 @@ function scoreColor(s) {
 }
 
 // ── FETCH ──────────────────────────────────────────────────────
+function renderWeekStrip(dayScores) {
+  const row = document.getElementById('week-row');
+  row.innerHTML = '';
+  dayScores.forEach(({day, score, isSat}) => {
+    const d = new Date(day);
+    const dayName = ['א','ב','ג','ד','ה','ו','ש'][d.getDay()];
+    const dateNum = d.getDate();
+    const cell = document.createElement('div');
+    cell.style.cssText = `
+      background:${isSat?'rgba(0,150,180,0.25)':'rgba(0,30,60,0.5)'};
+      border:1px solid ${isSat?'rgba(0,200,220,0.5)':'rgba(0,200,220,0.15)'};
+      border-radius:12px;padding:10px 8px;text-align:center;
+      flex-shrink:0;min-width:52px;cursor:pointer;transition:transform 0.2s;
+    `;
+    cell.innerHTML = `
+      <div style="font-size:11px;color:rgba(200,240,255,0.5);margin-bottom:2px">${isSat?'⭐':'יום '+dayName}</div>
+      <div style="font-size:13px;font-weight:700;color:rgba(200,240,255,0.7)">${dateNum}</div>
+      <div style="font-size:20px;font-weight:900;color:${scoreColor(score)};margin:4px 0">${score}</div>
+      <div style="font-size:9px;color:rgba(200,240,255,0.4)">/10</div>
+    `;
+    cell.addEventListener('mouseenter',()=>cell.style.transform='translateY(-3px)');
+    cell.addEventListener('mouseleave',()=>cell.style.transform='none');
+    cell.addEventListener('click',()=>{
+      const cards = document.querySelectorAll('.day-card');
+      const idx = dayScores.filter(ds=>ds.day>=day&&ds.day==day).length ? dayScores.findIndex(ds=>ds.day===day) : -1;
+      if(cards[idx]) cards[idx].scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    row.appendChild(cell);
+  });
+  document.getElementById('week-strip').style.display='block';
+}
+
 async function fetchData() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('cards').innerHTML = '';
@@ -352,13 +389,15 @@ async function fetchData() {
 
   try {
     // Marine API - waves, swell, current
-    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,swell_wave_height,ocean_current_velocity,wind_wave_height&timezone=Asia%2FJerusalem&forecast_days=7`;
+    const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${LAT}&longitude=${LON}&hourly=wave_height,swell_wave_height,ocean_current_velocity,wind_wave_height&timezone=Asia%2FJerusalem&forecast_days=8`;
 
     const res = await fetch(marineUrl);
     if(!res.ok) throw new Error('Marine API error');
     const marine = await res.json();
 
     document.getElementById('loading').style.display = 'none';
+    const weekScores = buildWeekScores(marine);
+    renderWeekStrip(weekScores);
     renderCards(marine);
 
     const now = new Date();
@@ -375,6 +414,31 @@ async function fetchData() {
 }
 
 // ── RENDER ─────────────────────────────────────────────────────
+function buildWeekScores(marine) {
+  const times = marine.hourly.time;
+  const waves = marine.hourly.wave_height;
+  const swells = marine.hourly.swell_wave_height;
+  const currents = marine.hourly.ocean_current_velocity;
+  const windWaves = marine.hourly.wind_wave_height;
+  const today = new Date().toISOString().slice(0,10);
+  const dayMap = {};
+  times.forEach((t,i)=>{
+    const day=t.slice(0,10);
+    if(day<today) return;
+    if(!dayMap[day]) dayMap[day]=[];
+    const hr=+t.slice(11,13);
+    if(hr>=6&&hr<=17) dayMap[day].push({wave:waves[i]||0,swell:swells[i]||0,current:currents[i]||0,windWave:windWaves[i]||0});
+  });
+  return Object.keys(dayMap).sort().slice(0,7).map(day=>{
+    const dd=dayMap[day];
+    if(!dd.length) return {day,score:0,isSat:false};
+    const avg=(arr)=>arr.reduce((s,v)=>s+v,0)/arr.length;
+    const score=calcScore(avg(dd.map(h=>h.wave)),avg(dd.map(h=>h.swell)),avg(dd.map(h=>h.current)),avg(dd.map(h=>h.windWave)));
+    const d=new Date(day);
+    return {day,score,isSat:d.getDay()===6};
+  });
+}
+
 function renderCards(marine) {
   const times = marine.hourly.time;
   const waves = marine.hourly.wave_height;
@@ -406,7 +470,7 @@ function renderCards(marine) {
   let shown = 0;
   days.forEach(day => {
     if(day < today) return;
-    if(shown >= 3) return;
+    if(shown >= 7) return;
     shown++;
 
     const dayData = dayMap[day];
